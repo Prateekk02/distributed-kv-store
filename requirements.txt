@@ -2,3 +2,5 @@ uvicorn
 fastapi
 pytest
 httpx
+psycopg2-binary
+dotenv
