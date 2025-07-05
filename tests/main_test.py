@@ -1,53 +1,48 @@
 from fastapi.testclient import TestClient
-from app.main import app, store
+from app.main import app
 
-client = TestClient(app)
+client = TestClient(app=app)
 
-### GET missing key test case ###
-def test_get_missing_key():
+def test_put_and_get_key():
+    key = "test_key"
+    value = "test_value"
+    
+    # PUT request
+    response = client.put(f"/kv/{key}",params={"value":value})
+    assert response.status_code == 200
+    assert response.json() == {"message": "Key stored"}
+    
+    # GET request
+    response = client.get(f"/kv/{key}")
+    assert response.status_code==200
+    assert response.json() == {"value": value}
+    
+
+def test_get_nonexistent_key():
     response = client.get("/kv/nonexistent")
     assert response.status_code == 404
-    assert response.json()['detail'] == "Key not found in the database"
-   
-### PUT missing key test case ###    
-def test_put_missing_key():
-    response = client.put("/kv/mykey", params={"value": "myvalue"})
-    assert response.status_code == 404
-    assert response.json()['detail'] == "Key not found in the database"
+    assert response.json()['detail'] == 'Key not found' 
+    
 
-### DELETE missing key test case ###  
-def test_delete_missing_key():
-    store.clear()
-    response = client.delete("/kv/nonexistent")
+def test_delete_key():
+    key = "keytodelete"
+    value = "somevalue"
+    
+    # Insert first
+    response = client.put(f"/kv/{key}", params={"value": value})
+    assert response.status_code == 200
+    assert response.json()["message"] == "Key stored"
+    
+    # Delete 
+    response = client.delete(f"/kv/{key}")
+    assert response.status_code == 200
+    assert response.json()["message"] == "Key deleted successfully"
+    
+    # Get
+    response = client.get(f"/kv/{key}")
+    assert response.status_code == 404  
+    
+def test_delete_nonexistent_key():
+    response = client.delete("/kv/ghostkey")
     assert response.status_code == 404
-    assert response.json()['detail'] == "Key not found in the database"
-    
-### KV Operations
-def test_kv_operations():
-    store.clear()
-    
-    store['testkey'] = 'initial'
-    
-    # GET 
-    response = client.get("/kv/testkey")
-    assert response.status_code == 200
-    assert response.json() == {"value": "initial"}
-    
-    # PUT (update)
-    response = client.put("/kv/testkey", params={"value": "updated"})
-    assert response.status_code == 200
-    assert response.json()['message'] == "Key value updated successfully" 
-    
-    # Confirming update via get
-    response = client.get("kv/testkey")
-    assert response.status_code == 200
-    assert response.json() == {"value" : "updated"}
-    
-    # DELETE
-    response = client.delete("kv/testkey")
-    assert response.status_code == 200
-    assert response.json()['message'] == "Key deleted successfully"
-    
-    # Confirming Delete
-    response = client.get("kv/testkey")
-    assert response.status_code == 404
+    assert response.json()['detail'] == 'Key not found' 
